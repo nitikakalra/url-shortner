@@ -16,28 +16,42 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Connect to MongoDB
 connectDB();
 
-// Static file serving for password prompt page
+// Serve static files (like password prompt page)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Allowlisted origins
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [process.env.FRONTEND_URL]
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [process.env.FRONTEND_URL] 
-    : ['http://localhost:3000', 'http://localhost:5173'], // Common dev ports
-  credentials: true, // If you need to send cookies
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
   optionsSuccessStatus: 200,
-  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE']
 }));
+
 app.use(express.json());
 
+// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api', urlRoutes);
-app.use('/', urlRoutes);
+app.use('/', urlRoutes); // Optional: depends on if your app handles root route
 
+// Error handling middlewares
 app.use(notFound);
 app.use(errorHandler);
 
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-}); 
+});
